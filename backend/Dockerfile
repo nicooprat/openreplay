@@ -6,10 +6,18 @@ ARG ARCH=amd64
 
 FROM --platform=linux/$ARCH golang:1.21-alpine3.18 AS build
 RUN if [ "$GSSAPI" = "true" ]; then \
-      apk add --no-cache git openssh openssl-dev pkgconf gcc g++ make libc-dev bash librdkafka-dev cyrus-sasl cyrus-sasl-gssapiv2 krb5; \
+      apk add --no-cache git openssh openssl-dev libssl-dev libsasl2-dev pkgconf gcc g++ make libc-dev bash cyrus-sasl cyrus-sasl-gssapiv2 krb5; \
     else \
       apk add --no-cache gcc g++ make libc-dev; \
     fi
+
+# Manually install latest librdkafka with SASL support
+RUN if [ "$GSSAPI" = "true" ]; then git clone https://github.com/edenhill/librdkafka.git; else :; fi
+WORKDIR librdkafka
+RUN if [ "$GSSAPI" = "true" ]; then ./configure --prefix /usr --install-deps; else :; fi
+RUN if [ "$GSSAPI" = "true" ]; then make; else :; fi
+RUN if [ "$GSSAPI" = "true" ]; then make install; else :; fi
+
 WORKDIR /root
 
 # Load code dependencies
@@ -37,10 +45,18 @@ LABEL GIT_SHA=$GIT_SHA
 LABEL GSSAPI=$GSSAPI
 
 RUN if [ "$GSSAPI" = "true" ]; then \
-      apk add --no-cache ca-certificates librdkafka-dev cyrus-sasl cyrus-sasl-gssapiv2 krb5; \
+      apk add --no-cache bash git openssh openssl-dev libssl-dev libsasl2-dev pkgconf gcc g++ make libc-dev ca-certificates cyrus-sasl cyrus-sasl-gssapiv2 krb5; \
     else \
       apk add --no-cache ca-certificates cyrus-sasl cyrus-sasl-gssapiv2 krb5; \
     fi
+
+# Manually install latest librdkafka with SASL support
+RUN if [ "$GSSAPI" = "true" ]; then git clone https://github.com/edenhill/librdkafka.git; else :; fi
+WORKDIR librdkafka
+RUN if [ "$GSSAPI" = "true" ]; then ./configure --prefix /usr --install-deps; else :; fi
+RUN if [ "$GSSAPI" = "true" ]; then make; else :; fi
+RUN if [ "$GSSAPI" = "true" ]; then make install; else :; fi
+
 RUN adduser -u 1001 openreplay -D
 
 ARG SERVICE_NAME
