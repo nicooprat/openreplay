@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net/http"
 	"openreplay/backend/pkg/featureflags"
-	"openreplay/backend/pkg/sessions"
 	"strconv"
 	"time"
 
@@ -171,32 +170,33 @@ func (e *Router) startSessionHandlerWeb(w http.ResponseWriter, r *http.Request) 
 			UserID:               req.UserID,
 		}
 
+		// Insert session start to db in ender
 		// Save sessionStart to db
-		if err := e.services.Sessions.Add(&sessions.Session{
-			SessionID:            sessionID,
-			Platform:             "web",
-			Timestamp:            sessionStart.Timestamp,
-			Timezone:             req.Timezone,
-			ProjectID:            uint32(sessionStart.ProjectID),
-			TrackerVersion:       sessionStart.TrackerVersion,
-			RevID:                sessionStart.RevID,
-			UserUUID:             sessionStart.UserUUID,
-			UserOS:               sessionStart.UserOS,
-			UserOSVersion:        sessionStart.UserOSVersion,
-			UserDevice:           sessionStart.UserDevice,
-			UserCountry:          geoInfo.Country,
-			UserState:            geoInfo.State,
-			UserCity:             geoInfo.City,
-			UserAgent:            sessionStart.UserAgent,
-			UserBrowser:          sessionStart.UserBrowser,
-			UserBrowserVersion:   sessionStart.UserBrowserVersion,
-			UserDeviceType:       sessionStart.UserDeviceType,
-			UserDeviceMemorySize: sessionStart.UserDeviceMemorySize,
-			UserDeviceHeapSize:   sessionStart.UserDeviceHeapSize,
-			UserID:               &sessionStart.UserID,
-		}); err != nil {
-			log.Printf("can't insert session start: %s", err)
-		}
+		//if err := e.services.Sessions.Add(&sessions.Session{
+		//	SessionID:            sessionID,
+		//	Platform:             "web",
+		//	Timestamp:            sessionStart.Timestamp,
+		//	Timezone:             req.Timezone,
+		//	ProjectID:            uint32(sessionStart.ProjectID),
+		//	TrackerVersion:       sessionStart.TrackerVersion,
+		//	RevID:                sessionStart.RevID,
+		//	UserUUID:             sessionStart.UserUUID,
+		//	UserOS:               sessionStart.UserOS,
+		//	UserOSVersion:        sessionStart.UserOSVersion,
+		//	UserDevice:           sessionStart.UserDevice,
+		//	UserCountry:          geoInfo.Country,
+		//	UserState:            geoInfo.State,
+		//	UserCity:             geoInfo.City,
+		//	UserAgent:            sessionStart.UserAgent,
+		//	UserBrowser:          sessionStart.UserBrowser,
+		//	UserBrowserVersion:   sessionStart.UserBrowserVersion,
+		//	UserDeviceType:       sessionStart.UserDeviceType,
+		//	UserDeviceMemorySize: sessionStart.UserDeviceMemorySize,
+		//	UserDeviceHeapSize:   sessionStart.UserDeviceHeapSize,
+		//	UserID:               &sessionStart.UserID,
+		//}); err != nil {
+		//	log.Printf("can't insert session start: %s", err)
+		//}
 
 		// Send sessionStart message to kafka
 		if err := e.services.Producer.Produce(e.cfg.TopicRawWeb, tokenData.ID, sessionStart.Encode()); err != nil {
@@ -296,26 +296,29 @@ func (e *Router) notStartedHandlerWeb(w http.ResponseWriter, r *http.Request) {
 		ResponseWithError(w, http.StatusForbidden, errors.New("browser not recognized"), startTime, r.URL.Path, bodySize)
 		return
 	}
-	geoInfo := e.ExtractGeoData(r)
-	err = e.services.Sessions.AddUnStarted(&sessions.UnStartedSession{
-		ProjectKey:         *req.ProjectKey,
-		TrackerVersion:     req.TrackerVersion,
-		DoNotTrack:         req.DoNotTrack,
-		Platform:           "web",
-		UserAgent:          r.Header.Get("User-Agent"),
-		UserOS:             ua.OS,
-		UserOSVersion:      ua.OSVersion,
-		UserBrowser:        ua.Browser,
-		UserBrowserVersion: ua.BrowserVersion,
-		UserDevice:         ua.Device,
-		UserDeviceType:     ua.DeviceType,
-		UserCountry:        geoInfo.Country,
-		UserState:          geoInfo.State,
-		UserCity:           geoInfo.City,
-	})
-	if err != nil {
-		log.Printf("Unable to insert Unstarted Session: %v\n", err)
-	}
+
+	// Skip all un-started session
+
+	//geoInfo := e.ExtractGeoData(r)
+	//err = e.services.Sessions.AddUnStarted(&sessions.UnStartedSession{
+	//	ProjectKey:         *req.ProjectKey,
+	//	TrackerVersion:     req.TrackerVersion,
+	//	DoNotTrack:         req.DoNotTrack,
+	//	Platform:           "web",
+	//	UserAgent:          r.Header.Get("User-Agent"),
+	//	UserOS:             ua.OS,
+	//	UserOSVersion:      ua.OSVersion,
+	//	UserBrowser:        ua.Browser,
+	//	UserBrowserVersion: ua.BrowserVersion,
+	//	UserDevice:         ua.Device,
+	//	UserDeviceType:     ua.DeviceType,
+	//	UserCountry:        geoInfo.Country,
+	//	UserState:          geoInfo.State,
+	//	UserCity:           geoInfo.City,
+	//})
+	//if err != nil {
+	//	log.Printf("Unable to insert Unstarted Session: %v\n", err)
+	//}
 
 	ResponseOK(w, startTime, r.URL.Path, bodySize)
 }

@@ -2,6 +2,7 @@ package datasaver
 
 import (
 	"log"
+	"openreplay/backend/internal/http/geoip"
 
 	"openreplay/backend/internal/config/db"
 	"openreplay/backend/pkg/db/clickhouse"
@@ -114,6 +115,37 @@ func (s *saverImpl) handleMobileMessage(msg Message) error {
 }
 
 func (s *saverImpl) handleMessage(msg Message) error {
+	// Custom sessionStart handler before session db check
+	if msg.TypeID() == MsgSessionStart {
+		m := msg.(*SessionStart)
+		geoInfo := geoip.UnpackGeoRecord(m.UserCountry)
+		// Insert session start event
+		if err := s.sessions.Add(&sessions.Session{
+			SessionID:            msg.SessionID(),
+			Platform:             "web",
+			Timestamp:            m.Timestamp,
+			ProjectID:            uint32(m.ProjectID),
+			TrackerVersion:       m.TrackerVersion,
+			RevID:                m.RevID,
+			UserUUID:             m.UserUUID,
+			UserOS:               m.UserOS,
+			UserOSVersion:        m.UserOSVersion,
+			UserDevice:           m.UserDevice,
+			UserCountry:          geoInfo.Country,
+			UserState:            geoInfo.State,
+			UserCity:             geoInfo.City,
+			UserAgent:            m.UserAgent,
+			UserBrowser:          m.UserBrowser,
+			UserBrowserVersion:   m.UserBrowserVersion,
+			UserDeviceType:       m.UserDeviceType,
+			UserDeviceMemorySize: m.UserDeviceMemorySize,
+			UserDeviceHeapSize:   m.UserDeviceHeapSize,
+			UserID:               &m.UserID,
+		}); err != nil {
+			log.Printf("can't insert session start: %s", err)
+		}
+	}
+
 	session, err := s.sessions.Get(msg.SessionID())
 	if err != nil {
 		return err
